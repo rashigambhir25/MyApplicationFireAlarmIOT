@@ -27,7 +27,8 @@ public class MonitoringActivity extends AppCompatActivity {
     private Runnable updateSensorData;
 
     private static final int PERMISSION_REQUEST_CODE = 1;
-    private static final String API_URL = "https://air-quality-api.open-meteo.com/v1/air-quality?latitude=52.52&longitude=13.41&current=european_aqi,us_aqi,carbon_monoxide,nitrogen_dioxide,sulphur_dioxide&hourly=pm10,pm2_5";
+    private static final String AIR_QUALITY_API_URL = "https://air-quality-api.open-meteo.com/v1/air-quality?latitude=52.52&longitude=13.41&current=european_aqi,us_aqi,carbon_monoxide,nitrogen_dioxide,sulphur_dioxide&hourly=pm10,pm2_5";
+    private static final String TEMPERATURE_API_URL = "https://api.open-meteo.com/v1/forecast?latitude=52.52&longitude=13.41&current=temperature_2m&hourly=temperature_2m&timezone=Europe%2FLondon";
 
     // Threshold Values
     private static final int TEMPERATURE_THRESHOLD = 45; // degrees Celsius
@@ -53,7 +54,8 @@ public class MonitoringActivity extends AppCompatActivity {
         updateSensorData = new Runnable() {
             @Override
             public void run() {
-                fetchSensorData();
+                fetchAirQualityData();
+                fetchTemperatureData();
                 handler.postDelayed(this, 2000);
             }
         };
@@ -64,7 +66,7 @@ public class MonitoringActivity extends AppCompatActivity {
     private void fetchSensorData() {
         RequestQueue queue = Volley.newRequestQueue(this);
 
-        JsonObjectRequest request = new JsonObjectRequest(Request.Method.GET, API_URL, null,
+        JsonObjectRequest request = new JsonObjectRequest(Request.Method.GET, AIR_QUALITY_API_URL, null,
                 response -> {
                     try {
                         JSONObject current = response.getJSONObject("current");
@@ -86,6 +88,61 @@ public class MonitoringActivity extends AppCompatActivity {
 
                     } catch (Exception e) {
                         Log.e("API_ERROR", "Error parsing data", e);
+                    }
+                },
+                error -> Log.e("API_ERROR", "Network error: " + error.toString()));
+
+        queue.add(request);
+    }
+
+    private void fetchAirQualityData() {
+        RequestQueue queue = Volley.newRequestQueue(this);
+
+        JsonObjectRequest request = new JsonObjectRequest(Request.Method.GET, AIR_QUALITY_API_URL, null,
+                response -> {
+                    try {
+                        JSONObject current = response.getJSONObject("current");
+
+                        double coValue = current.getDouble("carbon_monoxide");
+                        double no2Value = current.getDouble("nitrogen_dioxide");
+                        double so2Value = current.getDouble("sulphur_dioxide");
+
+                        runOnUiThread(() -> {
+                            smokeTextView.setText("CO Level: " + coValue + " μg/m³");
+                            nitrogenTextView.setText("Nitrogen Dioxide: " + no2Value + " μg/m³");
+                            sulphurTextView.setText("Sulphur Dioxide: " + so2Value + " μg/m³");
+                        });
+
+                        checkAndSendAlert(0, coValue, no2Value, so2Value);
+
+                    } catch (Exception e) {
+                        Log.e("API_ERROR", "Error parsing air quality data", e);
+                    }
+                },
+                error -> Log.e("API_ERROR", "Network error: " + error.toString()));
+
+        queue.add(request);
+    }
+
+    private void fetchTemperatureData() {
+        RequestQueue queue = Volley.newRequestQueue(this);
+
+        JsonObjectRequest request = new JsonObjectRequest(Request.Method.GET, TEMPERATURE_API_URL, null,
+                response -> {
+                    try {
+                        JSONObject current = response.getJSONObject("current");
+                        int temperature = current.getInt("temperature_2m");
+                        Log.e("temperature", "temp: "+ temperature);
+                        System.out.println(temperature);
+
+                        runOnUiThread(() -> {
+                            temperatureTextView.setText("Temperature: " + temperature + "°C");
+                        });
+
+                        checkAndSendAlert(temperature, 0.0, 0.0, 0.0);
+
+                    } catch (Exception e) {
+                        Log.e("API_ERROR", "Error parsing temperature data", e);
                     }
                 },
                 error -> Log.e("API_ERROR", "Network error: " + error.toString()));
