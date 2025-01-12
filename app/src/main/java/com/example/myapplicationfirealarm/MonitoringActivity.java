@@ -54,8 +54,10 @@ public class MonitoringActivity extends AppCompatActivity {
         updateSensorData = new Runnable() {
             @Override
             public void run() {
+                System.out.println("Fetching sensor data");
                 fetchAirQualityData();
                 fetchTemperatureData();
+//                fetchSensorData();
                 handler.postDelayed(this, 2000);
             }
         };
@@ -63,37 +65,43 @@ public class MonitoringActivity extends AppCompatActivity {
         handler.post(updateSensorData);
     }
 
-    private void fetchSensorData() {
-        RequestQueue queue = Volley.newRequestQueue(this);
-
-        JsonObjectRequest request = new JsonObjectRequest(Request.Method.GET, AIR_QUALITY_API_URL, null,
-                response -> {
-                    try {
-                        JSONObject current = response.getJSONObject("current");
-
-                        double coValue = current.getDouble("carbon_monoxide");
-                        double no2Value = current.getDouble("nitrogen_dioxide");
-                        double so2Value = current.getDouble("sulphur_dioxide");
-
-                        int temperature = 45; // Static value for testing, replace with actual sensor reading
-                        runOnUiThread(() -> {
-                            temperatureTextView.setText("Temperature: " + temperature + "°C");
-                            smokeTextView.setText("CO Level: " + coValue + " μg/m³");
-                            nitrogenTextView.setText("Nitrogen Dioxide: " + no2Value + " μg/m³");
-                            sulphurTextView.setText("Sulphur Dioxide: " + so2Value + " μg/m³");
-                        });
-
-                        // Check conditions and send alert if needed
-                        checkAndSendAlert(temperature, coValue, no2Value, so2Value);
-
-                    } catch (Exception e) {
-                        Log.e("API_ERROR", "Error parsing data", e);
-                    }
-                },
-                error -> Log.e("API_ERROR", "Network error: " + error.toString()));
-
-        queue.add(request);
-    }
+//    private void fetchSensorData() {
+//        temperatureTextView.setText("Temperature: " + 50 + "°C");
+//        smokeTextView.setText("CO Level: " + 1000 + " μg/m³");
+//        nitrogenTextView.setText("Nitrogen Dioxide: " + 50 + " μg/m³");
+//        sulphurTextView.setText("Sulphur Dioxide: " + 45 + " μg/m³");
+//        RequestQueue queue = Volley.newRequestQueue(this);
+//
+//        JsonObjectRequest request = new JsonObjectRequest(Request.Method.GET, AIR_QUALITY_API_URL, null,
+//                response -> {
+//                    try {
+//                        JSONObject current = response.getJSONObject("current");
+//
+//                        double coValue = current.getDouble("carbon_monoxide");
+//                        double no2Value = current.getDouble("nitrogen_dioxide");
+//                        double so2Value = current.getDouble("sulphur_dioxide");
+//
+//                        int temperature = 45; // Static value for testing, replace with actual sensor reading
+//                        runOnUiThread(() -> {
+//                            temperatureTextView.setText("Temperature: " + temperature + "°C");
+//                            smokeTextView.setText("CO Level: " + coValue + " μg/m³");
+//                            nitrogenTextView.setText("Nitrogen Dioxide: " + no2Value + " μg/m³");
+//                            sulphurTextView.setText("Sulphur Dioxide: " + so2Value + " μg/m³");
+//                        });
+//
+//                        // Check conditions and send alert if needed
+//                        checkAndSendAlert(temperature, coValue, no2Value, so2Value);
+//
+//                    } catch (Exception e) {
+//                        Log.e("API_ERROR", "Error parsing data", e);
+//                        temperatureTextView.setText("Temperature: " + 50 + "°C");
+//                    }
+//                },
+//                error -> Log.e("API_ERROR", "Network error: " + error.toString()));
+//        temperatureTextView.setText("Temperature: " + 50 + "°C");
+//
+//        queue.add(request);
+//    }
 
     private void fetchAirQualityData() {
         RequestQueue queue = Volley.newRequestQueue(this);
@@ -130,10 +138,12 @@ public class MonitoringActivity extends AppCompatActivity {
         JsonObjectRequest request = new JsonObjectRequest(Request.Method.GET, TEMPERATURE_API_URL, null,
                 response -> {
                     try {
+
                         JSONObject current = response.getJSONObject("current");
-                        int temperature = current.getInt("temperature_2m");
-                        Log.e("temperature", "temp: "+ temperature);
-                        System.out.println(temperature);
+                        System.out.println("current" + current);
+                        double temperature = (double) (current.get("temperature_2m"));
+                        Log.i("temperature", "temp: "+ temperature);
+                        System.out.println("temperature" + temperature);
 
                         runOnUiThread(() -> {
                             temperatureTextView.setText("Temperature: " + temperature + "°C");
@@ -150,7 +160,7 @@ public class MonitoringActivity extends AppCompatActivity {
         queue.add(request);
     }
 
-    private void checkAndSendAlert(int temperature, double coValue, double no2Value, double so2Value) {
+    private void checkAndSendAlert(double temperature, double coValue, double no2Value, double so2Value) {
         if (!alertSent && (temperature >= TEMPERATURE_THRESHOLD ||
                 coValue >= CO_THRESHOLD ||
                 no2Value >= NO2_THRESHOLD ||
